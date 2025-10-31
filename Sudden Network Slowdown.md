@@ -20,7 +20,7 @@ DeviceNetworkEvents
 | project TimeGenerated, ActionType, DeviceName, LocalIP, LocalPort, RemoteIP, RemotePort, InitiatingProcessCommandLine
 ```
 
-<img width="1212" alt="image" src="https://github.com/aktran321/threat-hunting-scenario-tor/blob/main/Screenshot%202025-10-23%20at%205.57.47%20AM.png">
+<img width="1212" alt="image" src="https://github.com/aktran321/threat-hunting-scenario-tor/blob/main/Screenshot%202025-10-22%20at%208.18.04%20PM.png">
 
 We see that the `InitiatingProcessCommandLine` field shows a PowerShell script being ran called `portscan.ps1`. If we look further down the logs, we would see typical ports being scanned like 21 (FTP), 22 (SSH), 80 (HTTP), 443 (HTTPS), 3306 (MySQL), 8080 (HTTP), etc.
 
@@ -35,7 +35,7 @@ DeviceProcessEvents
 | project TimeGenerated, FileName, InitiatingProcessCommandLine
 ```
 
-![[Screenshot 2025-10-23 at 5.58.19 AM.png]]
+<img width="1212" alt="image" src="https://github.com/aktran321/threat-hunting-scenario-tor/blob/main/Screenshot%202025-10-23%20at%205.58.19%20AM.png">
 
 We see at `2025-10-22T12:36:57.678805Z` an `Invoke-WebRequest` command is used to download the `portscan.ps1` script from Github.
 ```
