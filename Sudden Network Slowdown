@@ -7,7 +7,7 @@ DeviceNetworkEvents
 | summarize ConnectionCount = count() by DeviceName, ActionType, RemoteIP, LocalIP
 | order by ConnectionCount
 ```
-![image](.Screenshot 2025-10-22 at 7.58.01 PM.png)
+<img width="1212" alt="image" src="https://github.com/aktran321/threat-hunting-scenario-tor/blob/main/Screenshot%202025-10-22%20at%207.58.01%20PM.png">
 
 Taking a closer look at the IP in question `10.0.0.103`, it appears to be doing a port scan which is causing the multiple failed attempts
 
